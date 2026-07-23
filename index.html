@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Asset Register — Local Administration Department</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+  :root{
+    --ink:#1f2b26;
+    --ink-soft:#4b5a54;
+    --paper:#f5f2e8;
+    --paper-raised:#fffdf8;
+    --teal:#0f3d3d;
+    --teal-deep:#0a2b2b;
+    --teal-light:#1c5c5c;
+    --amber:#b8752e;
+    --amber-light:#d99a4e;
+    --success:#2f6e4e;
+    --success-bg:#e6f0e9;
+    --danger:#af3b2a;
+    --danger-bg:#f6e6e2;
+    --border:#d9d2bd;
+    --border-soft:#e8e3d3;
+    --shadow: 0 1px 2px rgba(15,61,61,.06), 0 4px 14px rgba(15,61,61,.07);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    font-size:14.5px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  h1,h2,h3{font-family:'Source Serif 4',Georgia,serif; margin:0; color:var(--teal-deep);}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select,textarea{font-family:inherit;font-size:14.5px;}
+
+  /* ---------- App shell ---------- */
+  #app{display:flex; min-height:100vh;}
+
+  /* Sidebar - ledger tab style */
+  #sidebar{
+    width:210px; flex-shrink:0;
+    background:linear-gradient(180deg, var(--teal-deep), var(--teal));
+    color:#eef3f0;
+    display:flex; flex-direction:column;
+    position:sticky; top:0; height:100vh;
+  }
+  #brand{
+    padding:20px 18px 14px 18px;
+    border-bottom:1px solid rgba(255,255,255,.12);
+  }
+  #brand .seal{
+    width:34px;height:34px;border-radius:50%;
+    border:2px solid var(--amber-light);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Source Serif 4',serif; font-weight:700; color:var(--amber-light);
+    margin-bottom:10px; font-size:15px;
+  }
+  #brand h1{color:#fff; font-size:16.5px; line-height:1.3;}
+  #brand p{margin:4px 0 0; font-size:11px; color:#b9c9c3; letter-spacing:.03em; text-transform:uppercase;}
+
+  nav.tabs{display:flex; flex-direction:column; padding:14px 0; flex:1;}
+  nav.tabs button{
+    all:unset; box-sizing:border-box;
+    display:flex; align-items:center; gap:10px;
+    padding:11px 18px; margin:1px 8px; border-radius:6px;
+    color:#cfe0d9; font-size:13.5px; font-weight:500;
+    border-left:3px solid transparent;
+  }
+  nav.tabs button .ico{width:16px; text-align:center; font-size:14px;}
+  nav.tabs button.active{
+    background:rgba(255,255,255,.09);
+    color:#fff;
+    border-left-color:var(--amber-light);
+  }
+  nav.tabs button:hover:not(.active){background:rgba(255,255,255,.05);}
+
+  #sidebar-foot{padding:14px 18px; font-size:10.5px; color:#8fa69d; border-top:1px solid rgba(255,255,255,.1);}
+
+  /* Mobile bottom nav */
+  #mobile-nav{display:none;}
+
+  main{flex:1; min-width:0; padding:22px 26px 80px; max-width:1200px;}
+
+  .page-head{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:18px;}
+  .page-head h2{font-size:22px;}
+  .page-head .sub{color:var(--ink-soft); font-size:12.5px;}
+
+  .card{
+    background:var(--paper-raised);
+    border:1px solid var(--border-soft);
+    border-radius:10px;
+    box-shadow:var(--shadow);
+    padding:18px 20px;
+    margin-bottom:16px;
+  }
+  .card h3{font-size:15px; margin-bottom:12px; display:flex; align-items:center; gap:8px;}
+  .card h3 .tag{font-size:10px; background:var(--amber); color:#fff; padding:2px 7px; border-radius:20px; font-family:'IBM Plex Mono',monospace; letter-spacing:.03em;}
+
+  .grid{display:grid; gap:14px;}
+  .grid.cols-2{grid-template-columns:1fr 1fr;}
+  .grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
+  .grid.cols-4{grid-template-columns:repeat(4,1fr);}
+  @media(max-width:820px){ .grid.cols-2,.grid.cols-3,.grid.cols-4{grid-template-columns:1fr 1fr;} }
+  @media(max-width:560px){ .grid.cols-2,.grid.cols-3,.grid.cols-4{grid-template-columns:1fr;} }
+
+  label{display:block; font-size:11.5px; font-weight:600; color:var(--teal); text-transform:uppercase; letter-spacing:.03em; margin-bottom:5px;}
+  .field{margin-bottom:2px;}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:6px;
+    background:#fff; color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--amber-light); outline-offset:1px; border-color:var(--amber);}
+  textarea{resize:vertical; min-height:60px;}
+
+  .dropdown-row{display:flex; gap:6px; align-items:stretch;}
+  .dropdown-row select{flex:1;}
+  .icon-btn{
+    border:1px solid var(--border); background:#fff; border-radius:6px;
+    width:34px; flex-shrink:0; font-size:14px; color:var(--teal); font-weight:700;
+  }
+  .icon-btn:hover{background:var(--paper);}
+
+  .btn{
+    display:inline-flex; align-items:center; gap:7px;
+    padding:9px 16px; border-radius:7px; border:1px solid transparent;
+    font-weight:600; font-size:13.5px;
+  }
+  .btn-primary{background:var(--teal); color:#fff;}
+  .btn-primary:hover{background:var(--teal-light);}
+  .btn-amber{background:var(--amber); color:#fff;}
+  .btn-amber:hover{background:var(--amber-light);}
+  .btn-ghost{background:transparent; border-color:var(--border); color:var(--ink);}
+  .btn-ghost:hover{background:var(--paper);}
+  .btn-danger{background:var(--danger-bg); color:var(--danger); border-color:#e3c4bb;}
+  .btn-danger:hover{background:#efd2c9;}
+  .btn-sm{padding:5px 10px; font-size:12px; border-radius:6px;}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+
+  .actions-row{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+
+  /* Stat cards */
+  .stat-card{
+    background:var(--paper-raised); border:1px solid var(--border-soft); border-radius:10px;
+    padding:16px 18px; box-shadow:var(--shadow);
+  }
+  .stat-card .n{font-family:'IBM Plex Mono',monospace; font-size:26px; font-weight:600; color:var(--teal-deep);}
+  .stat-card .l{font-size:11.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em; margin-top:2px;}
+  .stat-card .accent{width:26px; height:3px; background:var(--amber); border-radius:2px; margin-bottom:8px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th{
+    text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.03em;
+    color:var(--teal); border-bottom:2px solid var(--border); padding:8px 8px; white-space:nowrap;
+  }
+  td{padding:9px 8px; border-bottom:1px solid var(--border-soft); vertical-align:top;}
+  tr:hover td{background:#faf8f0;}
+  .table-wrap{overflow-x:auto;}
+
+  .pill{display:inline-block; padding:2px 9px; border-radius:20px; font-size:11px; font-weight:600; background:var(--paper); border:1px solid var(--border);}
+  .pill.type{background:var(--success-bg); color:var(--success); border-color:#c6ddcc;}
+
+  .search-box{position:relative;}
+  .search-box input{padding-left:32px;}
+  .search-box::before{content:"⌕"; position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--ink-soft); font-size:15px;}
+
+  .photo-thumbs{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;}
+  .photo-thumbs .ph{position:relative; width:64px; height:64px; border-radius:6px; overflow:hidden; border:1px solid var(--border);}
+  .photo-thumbs .ph img{width:100%; height:100%; object-fit:cover;}
+  .photo-thumbs .ph button{
+    position:absolute; top:2px; right:2px; background:rgba(175,59,42,.9); color:#fff; border:none;
+    width:16px; height:16px; border-radius:50%; font-size:10px; line-height:1; padding:0;
+  }
+
+  .gps-row{display:flex; gap:8px; align-items:center;}
+  .gps-row .coords{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-soft); flex:1;}
+
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(0);
+    background:var(--teal-deep); color:#fff; padding:11px 18px; border-radius:8px;
+    font-size:13px; box-shadow:var(--shadow); z-index:999; opacity:0; pointer-events:none; transition:.25s;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+  .toast.err{background:var(--danger);}
+
+  /* Modal */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(15,30,27,.5); display:none;
+    align-items:center; justify-content:center; z-index:1000; padding:16px;
+  }
+  .modal-backdrop.show{display:flex;}
+  .modal{
+    background:var(--paper-raised); border-radius:12px; width:100%; max-width:420px;
+    padding:20px; max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.3);
+  }
+  .modal h3{margin-bottom:12px;}
+  .list-manage-item{display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:13.5px;}
+  .list-manage-item button{background:none; border:none; color:var(--danger); font-size:13px;}
+
+  #map{height:520px; border-radius:10px; overflow:hidden; border:1px solid var(--border);}
+  .map-popup img{width:100%; border-radius:6px; margin-top:6px;}
+  .map-popup b{color:var(--teal-deep);}
+  .map-label{
+    background:var(--teal-deep); color:#fff; border:none; box-shadow:var(--shadow);
+    font-family:'Inter',sans-serif; font-size:11px; font-weight:600; padding:2px 7px; border-radius:4px;
+  }
+  .map-label::before{border-top-color:var(--teal-deep);}
+
+  .empty-state{text-align:center; padding:40px 20px; color:var(--ink-soft);}
+  .empty-state .big{font-size:32px; margin-bottom:8px;}
+
+  .filter-bar{display:flex; gap:10px; flex-wrap:wrap; align-items:end;}
+  .filter-bar .field{min-width:150px; flex:1;}
+
+  .helper{font-size:11.5px; color:var(--ink-soft); margin-top:5px;}
+
+  @media(max-width:860px){
+    #sidebar{display:none;}
+    main{padding:16px 14px 90px;}
+    #mobile-nav{
+      display:flex; position:fixed; bottom:0; left:0; right:0; height:60px;
+      background:var(--teal-deep); z-index:100; border-top:1px solid rgba(255,255,255,.1);
+    }
+    #mobile-nav button{
+      all:unset; flex:1; text-align:center; color:#b9c9c3; font-size:10px; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:3px;
+    }
+    #mobile-nav button .ico{font-size:17px;}
+    #mobile-nav button.active{color:#fff;}
+    #mobile-nav button.active .ico{color:var(--amber-light);}
+    .grid.cols-4{grid-template-columns:1fr 1fr;}
+  }
+
+  .print-only{display:none;}
+  @media print{
+    #sidebar,#mobile-nav,.no-print{display:none !important;}
+    main{padding:0; max-width:none;}
+    .print-only{display:block;}
+    body{background:#fff;}
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <aside id="sidebar">
+    <div id="brand">
+      <div class="seal">AR</div>
+      <h1>Asset Register</h1>
+      <p>Local Administration Dept.</p>
+    </div>
+    <nav class="tabs" id="tabs-desktop">
+      <button data-tab="register" class="active"><span class="ico">＋</span> Asset Registration</button>
+      <button data-tab="dashboard"><span class="ico">▦</span> Dashboard</button>
+      <button data-tab="map"><span class="ico">⚑</span> Map</button>
+      <button data-tab="reports"><span class="ico">▤</span> Reports</button>
+      <button data-tab="export"><span class="ico">⇩</span> Export</button>
+      <button data-tab="sync"><span class="ico">⇄</span> Sync (PC ↔ Mobile)</button>
+    </nav>
+    <div id="sidebar-foot">Data stored on this device only.<br>Works offline once loaded.</div>
+  </aside>
+
+  <main>
+    <!-- ============ REGISTER TAB ============ -->
+    <section id="tab-register" class="tab-panel">
+      <div class="page-head">
+        <div><h2>Asset Registration</h2><div class="sub">Record a new civic asset with location and photographic evidence</div></div>
+      </div>
+
+      <form id="asset-form">
+        <input type="hidden" id="asset-id">
+        <div class="card">
+          <h3>Jurisdiction</h3>
+          <div class="grid cols-3">
+            <div class="field">
+              <label>Commune Panchayat</label>
+              <div class="dropdown-row">
+                <select id="f-commune" required></select>
+                <button type="button" class="icon-btn" data-manage="communes" data-label="Commune Panchayat">⚙</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Constituency</label>
+              <div class="dropdown-row">
+                <select id="f-constituency" required></select>
+                <button type="button" class="icon-btn" data-manage="constituencies" data-label="Constituency">⚙</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Village</label>
+              <div class="dropdown-row">
+                <select id="f-village" required></select>
+                <button type="button" class="icon-btn" data-manage="villages" data-label="Village">⚙</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Asset Details</h3>
+          <div class="grid cols-2">
+            <div class="field">
+              <label>Asset Type</label>
+              <div class="dropdown-row">
+                <select id="f-type" required></select>
+                <button type="button" class="icon-btn" data-manage="assetTypes" data-label="Asset Type">⚙</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Asset Name</label>
+              <input type="text" id="f-name" placeholder="e.g. Anna Nagar Overhead Tank" required>
+            </div>
+          </div>
+          <div class="field" style="margin-top:14px;">
+            <label>Description</label>
+            <textarea id="f-desc" placeholder="Brief description of the asset, condition, materials, etc."></textarea>
+          </div>
+          <div class="grid cols-2" style="margin-top:14px;">
+            <div class="field">
+              <label>Landmark</label>
+              <input type="text" id="f-landmark" placeholder="Nearby landmark">
+            </div>
+            <div class="field">
+              <label>Survey Number</label>
+              <input type="text" id="f-survey" placeholder="Survey / Sy. No.">
+            </div>
+          </div>
+          <div class="grid cols-2" style="margin-top:14px;">
+            <div class="field">
+              <label>Area (Sq.m)</label>
+              <input type="number" step="0.01" min="0" id="f-area" placeholder="0.00">
+            </div>
+            <div class="field">
+              <label>Number (Nos.)</label>
+              <input type="number" step="1" min="0" id="f-nos" placeholder="e.g. count of poles">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Location <span class="tag">GEOTAG</span></h3>
+          <div class="gps-row">
+            <button type="button" class="btn btn-amber" id="btn-geotag">⚑ Capture GPS Location</button>
+            <div class="coords" id="gps-display">Not captured yet</div>
+          </div>
+          <div class="helper" id="gps-time"></div>
+        </div>
+
+        <div class="card">
+          <h3>Photographs</h3>
+          <input type="file" id="f-photos" accept="image/*" capture="environment" multiple style="display:none">
+          <button type="button" class="btn btn-ghost" id="btn-add-photo">📷 Capture / Upload Photos</button>
+          <div class="photo-thumbs" id="photo-preview"></div>
+        </div>
+
+        <div class="card">
+          <h3>Officer Details</h3>
+          <div class="grid cols-2">
+            <div class="field">
+              <label>Officer Name</label>
+              <input type="text" id="f-officer" placeholder="Recording officer" required>
+            </div>
+            <div class="field">
+              <label>Date &amp; Time</label>
+              <input type="text" class="mono" id="f-datetime" disabled>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button type="submit" class="btn btn-primary">✓ Save Asset</button>
+          <button type="button" class="btn btn-ghost" id="btn-clear-form">Clear Form</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ============ DASHBOARD TAB ============ -->
+    <section id="tab-dashboard" class="tab-panel" style="display:none;">
+      <div class="page-head">
+        <div><h2>Dashboard</h2><div class="sub">Overview of registered assets</div></div>
+      </div>
+
+      <div class="card">
+        <h3>Filters</h3>
+        <div class="filter-bar">
+          <div class="field"><label>Commune Panchayat</label><select id="d-commune"><option value="">All</option></select></div>
+          <div class="field"><label>Constituency</label><select id="d-constituency"><option value="">All</option></select></div>
+          <div class="field"><label>Village</label><select id="d-village"><option value="">All</option></select></div>
+          <div class="field"><label>Asset Type</label><select id="d-type"><option value="">All</option></select></div>
+          <div class="field"><label>Date</label><input type="date" id="d-date"></div>
+          <div class="field" style="max-width:130px;"><button class="btn btn-ghost" id="d-clear-filters">Clear</button></div>
+        </div>
+      </div>
+
+      <div id="stat-cards" style="max-width:220px;"></div>
+
+      <div class="card">
+        <h3>Search Records</h3>
+        <div class="search-box"><input type="text" id="d-search" placeholder="Search by name, landmark, survey no., officer..."></div>
+      </div>
+
+      <div class="card">
+        <h3>Entries <span class="tag" id="d-count-tag">0</span></h3>
+        <div class="actions-row" style="margin-top:0; margin-bottom:14px;">
+          <button class="btn btn-amber" id="d-export-pdf">⬇ Export Dashboard to PDF</button>
+        </div>
+        <div class="table-wrap">
+          <table id="d-table">
+            <thead><tr>
+              <th>Asset</th><th>Type</th><th>Village</th><th>Commune</th><th>Date</th><th>Officer</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="d-empty" style="display:none;">
+          <div class="big">▦</div>No matching assets found.
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MAP TAB ============ -->
+    <section id="tab-map" class="tab-panel" style="display:none;">
+      <div class="page-head">
+        <div><h2>Map</h2><div class="sub">Geotagged asset locations — click a marker for details</div></div>
+      </div>
+      <div class="card">
+        <h3>Filters</h3>
+        <div class="filter-bar">
+          <div class="field"><label>Asset Type</label><select id="m-type"><option value="">All</option></select></div>
+          <div class="field"><label>Village</label><select id="m-village"><option value="">All</option></select></div>
+          <div class="field"><label>Constituency</label><select id="m-constituency"><option value="">All</option></select></div>
+          <div class="field" style="max-width:130px;"><button class="btn btn-ghost" id="m-clear-filters">Clear</button></div>
+        </div>
+        <div class="actions-row">
+          <button class="btn btn-amber" id="m-export-kml">⬇ Export Filtered to KML (Google Earth)</button>
+        </div>
+        <div class="helper" id="m-kml-info">Exports only the geotagged assets currently shown on the map, based on the filters above.</div>
+      </div>
+      <div class="card">
+        <div id="map"></div>
+        <div class="helper" id="map-note" style="margin-top:10px;"></div>
+      </div>
+    </section>
+
+    <!-- ============ REPORTS TAB ============ -->
+    <section id="tab-reports" class="tab-panel" style="display:none;">
+      <div class="page-head">
+        <div><h2>Reports</h2><div class="sub">Grouped and detailed registers for review</div></div>
+      </div>
+      <div class="card no-print">
+        <h3>Report Type</h3>
+        <div class="grid cols-3">
+          <div class="field">
+            <label>Report</label>
+            <select id="r-type">
+              <option value="village">Village-wise</option>
+              <option value="commune">Commune-wise</option>
+              <option value="constituency">Constituency-wise</option>
+              <option value="assettype">Asset Type-wise</option>
+              <option value="summary">Summary Report</option>
+              <option value="detailed">Detailed Register</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions-row">
+          <button class="btn btn-primary" id="r-generate">Generate Report</button>
+          <button class="btn btn-ghost" id="r-print">🖨 Print</button>
+        </div>
+      </div>
+      <div class="card" id="r-output"><div class="empty-state"><div class="big">▤</div>Choose a report type and click Generate.</div></div>
+    </section>
+
+    <!-- ============ EXPORT TAB ============ -->
+    <section id="tab-export" class="tab-panel" style="display:none;">
+      <div class="page-head">
+        <div><h2>Export</h2><div class="sub">Export filtered asset records to file</div></div>
+      </div>
+      <div class="card">
+        <h3>Filter Records to Export</h3>
+        <div class="filter-bar">
+          <div class="field"><label>Commune Panchayat</label><select id="e-commune"><option value="">All</option></select></div>
+          <div class="field"><label>Constituency</label><select id="e-constituency"><option value="">All</option></select></div>
+          <div class="field"><label>Village</label><select id="e-village"><option value="">All</option></select></div>
+          <div class="field"><label>Asset Type</label><select id="e-type"><option value="">All</option></select></div>
+        </div>
+        <div class="helper" id="e-count" style="margin-top:12px;"></div>
+      </div>
+      <div class="card">
+        <h3>Export Format</h3>
+        <div class="actions-row">
+          <button class="btn btn-primary" id="exp-xlsx">⬇ Excel (.xlsx)</button>
+          <button class="btn btn-primary" id="exp-csv">⬇ CSV</button>
+          <button class="btn btn-primary" id="exp-pdf">⬇ PDF</button>
+          <button class="btn btn-primary" id="exp-kml">⬇ KML (Google Earth)</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SYNC TAB ============ -->
+    <section id="tab-sync" class="tab-panel" style="display:none;">
+      <div class="page-head">
+        <div><h2>Sync — Computer ↔ Mobile</h2><div class="sub">Move all data between devices using a single Excel file (records, photos, and dropdown lists included)</div></div>
+      </div>
+
+      <div class="card">
+        <h3>1. Export Sync Package <span class="tag">FULL BACKUP</span></h3>
+        <p class="helper" style="margin-top:0;">Creates one .xlsx file containing every asset (all fields, GPS, photos, and your Commune/Constituency/Village/Asset Type lists). Transfer it to the other device by WhatsApp, email, USB, or Google Drive, then use "Import" there.</p>
+        <div class="actions-row">
+          <button class="btn btn-amber" id="sync-export">⬇ Export Sync Package (.xlsx)</button>
+        </div>
+        <div class="helper" id="sync-export-info"></div>
+      </div>
+
+      <div class="card">
+        <h3>2. Import Sync Package</h3>
+        <p class="helper" style="margin-top:0;">Select a sync .xlsx file exported from another device. You'll see a preview before anything is changed on this device.</p>
+        <input type="file" id="sync-file" accept=".xlsx" style="display:none">
+        <div class="actions-row">
+          <button class="btn btn-ghost" id="sync-choose-file">📂 Choose Sync File...</button>
+        </div>
+        <div id="sync-file-name" class="helper"></div>
+      </div>
+
+      <div class="card">
+        <h3>How it works</h3>
+        <ul style="margin:0; padding-left:18px; font-size:13px; color:var(--ink-soft); line-height:1.7;">
+          <li>Each asset gets a permanent hidden ID (UID) the first time it's saved, so the same record is recognised on both devices during future syncs.</li>
+          <li>Importing <strong>merges</strong> by default: new records are added, and records that already exist (matched by UID) are updated with the imported version. Nothing else is touched.</li>
+          <li>Photos are preserved at full quality inside the sync file, so the export may take a few seconds for large registers.</li>
+          <li>Do this periodically (e.g. end of each field day) to keep the office computer and field mobile in agreement.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav id="mobile-nav">
+  <button data-tab="register" class="active"><span class="ico">＋</span>Register</button>
+  <button data-tab="dashboard"><span class="ico">▦</span>Dashboard</button>
+  <button data-tab="map"><span class="ico">⚑</span>Map</button>
+  <button data-tab="reports"><span class="ico">▤</span>Reports</button>
+  <button data-tab="export"><span class="ico">⇩</span>Export</button>
+  <button data-tab="sync"><span class="ico">⇄</span>Sync</button>
+</nav>
+
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   ASSET REGISTER — single-file offline-capable app
+   Storage: IndexedDB (records + photos), localStorage (dropdown lists)
+   ========================================================================= */
+
+/* ---------------- IndexedDB wrapper ---------------- */
+const DB_NAME = 'AssetRegistryDB';
+const DB_VERSION = 1;
+let dbPromise = null;
+
+function openDB(){
+  if(dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e)=>{
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains('assets')){
+        db.createObjectStore('assets', {keyPath:'id', autoIncrement:true});
+      }
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+  return dbPromise;
+}
+function idbAll(){
+  return openDB().then(db=>new Promise((resolve,reject)=>{
+    const tx = db.transaction('assets','readonly');
+    const store = tx.objectStore('assets');
+    const req = store.getAll();
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  }));
+}
+function idbPut(record){
+  return openDB().then(db=>new Promise((resolve,reject)=>{
+    const tx = db.transaction('assets','readwrite');
+    const req = tx.objectStore('assets').put(record);
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  }));
+}
+function idbDelete(id){
+  return openDB().then(db=>new Promise((resolve,reject)=>{
+    const tx = db.transaction('assets','readwrite');
+    const req = tx.objectStore('assets').delete(id);
+    req.onsuccess = ()=>resolve();
+    req.onerror = ()=>reject(req.error);
+  }));
+}
+
+/* ---------------- Dropdown lists (localStorage) ---------------- */
+const LISTS_KEY = 'assetRegistryLists_v1';
+const DEFAULT_LISTS = {
+  communes: [],
+  constituencies: [],
+  villages: [],
+  assetTypes: ['Building','Street Light','Water Body','Road','Drain','Park','Bridge','Other']
+};
+function loadLists(){
+  try{
+    const raw = localStorage.getItem(LISTS_KEY);
+    if(!raw) return {...DEFAULT_LISTS};
+    const parsed = JSON.parse(raw);
+    return {...DEFAULT_LISTS, ...parsed};
+  }catch(e){ return {...DEFAULT_LISTS}; }
+}
+function saveLists(lists){ localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); }
+let LISTS = loadLists();
+
+/* ---------------- App state ---------------- */
+let ASSETS = [];
+let PENDING_PHOTOS = []; // base64 strings for the form currently being filled
+let CAPTURED_GPS = null; // {lat, lng, time}
+let currentTab = 'register';
+let editingId = null;
+
+/* ---------------- Utility ---------------- */
+function $(sel){ return document.querySelector(sel); }
+function $all(sel){ return Array.from(document.querySelectorAll(sel)); }
+function toast(msg, isErr){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr?' err':'');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function fmtDateTime(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('en-IN', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function fmtDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+}
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function makeUid(){
+  if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'uid-' + Date.now() + '-' + Math.random().toString(36).slice(2,10);
+}
+
+/* ---------------- Populate all dropdowns ---------------- */
+function populateSelect(sel, items, includeAllOption){
+  const current = sel.value;
+  sel.innerHTML = '';
+  if(includeAllOption){
+    const opt = document.createElement('option');
+    opt.value=''; opt.textContent='All';
+    sel.appendChild(opt);
+  }
+  items.forEach(v=>{
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    sel.appendChild(opt);
+  });
+  if(items.includes(current) || current==='') sel.value = current;
+}
+function refreshAllDropdowns(){
+  populateSelect($('#f-commune'), LISTS.communes, false);
+  populateSelect($('#f-constituency'), LISTS.constituencies, false);
+  populateSelect($('#f-village'), LISTS.villages, false);
+  populateSelect($('#f-type'), LISTS.assetTypes, false);
+
+  populateSelect($('#d-commune'), LISTS.communes, true);
+  populateSelect($('#d-constituency'), LISTS.constituencies, true);
+  populateSelect($('#d-village'), LISTS.villages, true);
+  populateSelect($('#d-type'), LISTS.assetTypes, true);
+
+  populateSelect($('#e-commune'), LISTS.communes, true);
+  populateSelect($('#e-constituency'), LISTS.constituencies, true);
+  populateSelect($('#e-village'), LISTS.villages, true);
+  populateSelect($('#e-type'), LISTS.assetTypes, true);
+
+  populateSelect($('#m-village'), LISTS.villages, true);
+  populateSelect($('#m-constituency'), LISTS.constituencies, true);
+  populateSelect($('#m-type'), LISTS.assetTypes, true);
+}
+
+/* ---------------- Manage list modal (add/delete dropdown items) ---------------- */
+function openManageModal(listKey, label){
+  const backdrop = $('#modal-backdrop');
+  const content = $('#modal-content');
+  function render(){
+    const items = LISTS[listKey];
+    content.innerHTML = `
+      <h3>Manage: ${escapeHtml(label)}</h3>
+      <div id="ml-items">
+        ${items.length ? items.map((it,i)=>`
+          <div class="list-manage-item">
+            <span>${escapeHtml(it)}</span>
+            <button data-idx="${i}" class="ml-del">✕ Remove</button>
+          </div>`).join('') : '<div class="helper">No items yet. Add one below.</div>'}
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label>Add New</label>
+        <div class="dropdown-row">
+          <input type="text" id="ml-new" placeholder="Enter ${escapeHtml(label)} name">
+          <button class="icon-btn" id="ml-add">+</button>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-ghost" id="ml-close">Close</button>
+      </div>
+    `;
+    $all('.ml-del').forEach(btn=>{
+      btn.onclick = ()=>{
+        const idx = parseInt(btn.dataset.idx,10);
+        const removed = items[idx];
+        items.splice(idx,1);
+        saveLists(LISTS);
+        refreshAllDropdowns();
+        render();
+        toast(`Removed "${removed}"`);
+      };
+    });
+    $('#ml-add').onclick = ()=>{
+      const inp = $('#ml-new');
+      const val = inp.value.trim();
+      if(!val) return;
+      if(items.includes(val)){ toast('Already exists', true); return; }
+      items.push(val);
+      saveLists(LISTS);
+      refreshAllDropdowns();
+      render();
+      toast(`Added "${val}"`);
+    };
+    $('#ml-close').onclick = closeModal;
+  }
+  render();
+  backdrop.classList.add('show');
+}
+function closeModal(){ $('#modal-backdrop').classList.remove('show'); }
+$('#modal-backdrop').addEventListener('click', (e)=>{ if(e.target.id==='modal-backdrop') closeModal(); });
+
+$all('[data-manage]').forEach(btn=>{
+  btn.addEventListener('click', ()=>openManageModal(btn.dataset.manage, btn.dataset.label));
+});
+
+/* ---------------- Tabs ---------------- */
+function switchTab(tab){
+  currentTab = tab;
+  $all('.tab-panel').forEach(p=>p.style.display='none');
+  $('#tab-'+tab).style.display='block';
+  $all('#tabs-desktop button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  $all('#mobile-nav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  if(tab==='dashboard') renderDashboard();
+  if(tab==='map') renderMap();
+  if(tab==='export') renderExportCount();
+  window.scrollTo(0,0);
+}
+$all('#tabs-desktop button, #mobile-nav button').forEach(btn=>{
+  btn.addEventListener('click', ()=>switchTab(btn.dataset.tab));
+});
+
+/* ---------------- Photo capture / compression ---------------- */
+$('#btn-add-photo').addEventListener('click', ()=>$('#f-photos').click());
+$('#f-photos').addEventListener('change', async (e)=>{
+  const files = Array.from(e.target.files || []);
+  for(const file of files){
+    try{
+      const compressed = await compressImage(file, 900, 0.65);
+      PENDING_PHOTOS.push(compressed);
+    }catch(err){ console.error(err); }
+  }
+  renderPhotoPreview();
+  e.target.value = '';
+});
+function compressImage(file, maxDim, quality){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w > h && w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; }
+        else if(h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function renderPhotoPreview(){
+  const wrap = $('#photo-preview');
+  wrap.innerHTML = PENDING_PHOTOS.map((p,i)=>`
+    <div class="ph"><img src="${p}"><button type="button" data-idx="${i}" class="ph-del">✕</button></div>
+  `).join('');
+  $all('.ph-del').forEach(b=>{
+    b.onclick = ()=>{ PENDING_PHOTOS.splice(parseInt(b.dataset.idx,10),1); renderPhotoPreview(); };
+  });
+}
+
+/* ---------------- Geotag ---------------- */
+$('#btn-geotag').addEventListener('click', ()=>{
+  if(!navigator.geolocation){ toast('Geolocation not supported on this device', true); return; }
+  const btn = $('#btn-geotag');
+  btn.disabled = true; btn.textContent = '⏳ Locating...';
+  navigator.geolocation.getCurrentPosition((pos)=>{
+    CAPTURED_GPS = {
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      time: new Date().toISOString()
+    };
+    $('#gps-display').textContent = `Lat ${CAPTURED_GPS.lat.toFixed(6)}, Lng ${CAPTURED_GPS.lng.toFixed(6)} (±${Math.round(pos.coords.accuracy)}m)`;
+    $('#gps-time').textContent = 'Captured: ' + fmtDateTime(CAPTURED_GPS.time);
+    $('#f-datetime').value = fmtDateTime(CAPTURED_GPS.time);
+    btn.disabled = false; btn.textContent = '⚑ Capture GPS Location';
+    toast('Location captured');
+  }, (err)=>{
+    btn.disabled = false; btn.textContent = '⚑ Capture GPS Location';
+    toast('Could not get location: ' + err.message, true);
+  }, {enableHighAccuracy:true, timeout:15000});
+});
+
+/* ---------------- Register form submit ---------------- */
+$('#asset-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const record = {
+    communePanchayat: $('#f-commune').value,
+    constituency: $('#f-constituency').value,
+    village: $('#f-village').value,
+    assetType: $('#f-type').value,
+    assetName: $('#f-name').value.trim(),
+    description: $('#f-desc').value.trim(),
+    landmark: $('#f-landmark').value.trim(),
+    surveyNumber: $('#f-survey').value.trim(),
+    area: parseFloat($('#f-area').value) || 0,
+    numberOfUnits: parseInt($('#f-nos').value) || 0,
+    latitude: CAPTURED_GPS ? CAPTURED_GPS.lat : null,
+    longitude: CAPTURED_GPS ? CAPTURED_GPS.lng : null,
+    geotagTime: CAPTURED_GPS ? CAPTURED_GPS.time : null,
+    photos: PENDING_PHOTOS.slice(),
+    officerName: $('#f-officer').value.trim(),
+    createdAt: new Date().toISOString()
+  };
+  if(!record.communePanchayat || !record.constituency || !record.village || !record.assetType || !record.assetName || !record.officerName){
+    toast('Please fill all required fields', true);
+    return;
+  }
+  if(editingId){
+    const existing = ASSETS.find(a=>a.id===editingId) || {};
+    record.id = editingId;
+    record.uid = existing.uid || makeUid();
+    record.createdAt = existing.createdAt || record.createdAt;
+  } else {
+    record.uid = makeUid();
+  }
+  record.updatedAt = new Date().toISOString();
+  try{
+    const id = await idbPut(record);
+    toast(editingId ? 'Asset updated' : 'Asset saved · ID '+id);
+    editingId = null;
+    await loadAssets();
+    resetForm();
+  }catch(err){
+    console.error(err);
+    toast('Could not save asset — storage may be full', true);
+  }
+});
+
+function resetForm(){
+  $('#asset-form').reset();
+  $('#asset-id').value = '';
+  PENDING_PHOTOS = [];
+  CAPTURED_GPS = null;
+  editingId = null;
+  $('#gps-display').textContent = 'Not captured yet';
+  $('#gps-time').textContent = '';
+  $('#f-datetime').value = '';
+  renderPhotoPreview();
+}
+$('#btn-clear-form').addEventListener('click', resetForm);
+
+function loadAssetIntoForm(asset){
+  editingId = asset.id;
+  $('#f-commune').value = asset.communePanchayat;
+  $('#f-constituency').value = asset.constituency;
+  $('#f-village').value = asset.village;
+  $('#f-type').value = asset.assetType;
+  $('#f-name').value = asset.assetName;
+  $('#f-desc').value = asset.description || '';
+  $('#f-landmark').value = asset.landmark || '';
+  $('#f-survey').value = asset.surveyNumber || '';
+  $('#f-area').value = asset.area || '';
+  $('#f-nos').value = asset.numberOfUnits || '';
+  $('#f-officer').value = asset.officerName || '';
+  PENDING_PHOTOS = (asset.photos || []).slice();
+  renderPhotoPreview();
+  if(asset.latitude != null){
+    CAPTURED_GPS = {lat:asset.latitude, lng:asset.longitude, time:asset.geotagTime};
+    $('#gps-display').textContent = `Lat ${asset.latitude.toFixed(6)}, Lng ${asset.longitude.toFixed(6)}`;
+    $('#gps-time').textContent = 'Captured: ' + fmtDateTime(asset.geotagTime);
+    $('#f-datetime').value = fmtDateTime(asset.geotagTime);
+  } else {
+    CAPTURED_GPS = null;
+    $('#gps-display').textContent = 'Not captured yet';
+    $('#gps-time').textContent = '';
+    $('#f-datetime').value = '';
+  }
+  switchTab('register');
+  window.scrollTo(0,0);
+}
+
+/* ---------------- Data load ---------------- */
+async function loadAssets(){
+  ASSETS = await idbAll();
+  const missingUid = ASSETS.filter(a=>!a.uid);
+  for(const a of missingUid){
+    a.uid = makeUid();
+    await idbPut(a);
+  }
+  ASSETS.sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+  if(currentTab==='dashboard') renderDashboard();
+  if(currentTab==='map') renderMap();
+  if(currentTab==='export') renderExportCount();
+}
+
+/* ---------------- Dashboard ---------------- */
+function getFiltered(prefix){
+  const commune = $('#'+prefix+'-commune') ? $('#'+prefix+'-commune').value : '';
+  const constituency = $('#'+prefix+'-constituency') ? $('#'+prefix+'-constituency').value : '';
+  const village = $('#'+prefix+'-village') ? $('#'+prefix+'-village').value : '';
+  const type = $('#'+prefix+'-type') ? $('#'+prefix+'-type').value : '';
+  const date = prefix==='d' ? $('#d-date').value : '';
+  const search = prefix==='d' ? $('#d-search').value.trim().toLowerCase() : '';
+
+  return ASSETS.filter(a=>{
+    if(commune && a.communePanchayat !== commune) return false;
+    if(constituency && a.constituency !== constituency) return false;
+    if(village && a.village !== village) return false;
+    if(type && a.assetType !== type) return false;
+    if(date){
+      const d = a.createdAt ? a.createdAt.slice(0,10) : '';
+      if(d !== date) return false;
+    }
+    if(search){
+      const hay = [a.assetName,a.landmark,a.surveyNumber,a.officerName,a.description].join(' ').toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
+    return true;
+  });
+}
+
+function renderDashboard(){
+  const filtered = getFiltered('d');
+
+  const total = filtered.length;
+  $('#stat-cards').innerHTML = `<div class="stat-card"><div class="accent"></div><div class="n mono">${total}</div><div class="l">Total Assets</div></div>`;
+
+  $('#d-count-tag').textContent = total;
+  const tbody = $('#d-table tbody');
+  const recent = filtered.slice(0,50);
+  tbody.innerHTML = recent.map(a=>`
+    <tr>
+      <td><strong>${escapeHtml(a.assetName)}</strong>${a.landmark?`<div class="helper">${escapeHtml(a.landmark)}</div>`:''}</td>
+      <td><span class="pill type">${escapeHtml(a.assetType)}</span></td>
+      <td>${escapeHtml(a.village)}</td>
+      <td>${escapeHtml(a.communePanchayat)}</td>
+      <td class="mono">${fmtDate(a.createdAt)}</td>
+      <td>${escapeHtml(a.officerName)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-sm btn-ghost" data-edit="${a.id}">Edit</button>
+        <button class="btn btn-sm btn-danger" data-del="${a.id}">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+  $('#d-empty').style.display = recent.length ? 'none' : 'block';
+
+  $all('[data-edit]').forEach(b=>b.onclick = ()=>{
+    const asset = ASSETS.find(a=>a.id===parseInt(b.dataset.edit,10));
+    if(asset) loadAssetIntoForm(asset);
+  });
+  $all('[data-del]').forEach(b=>b.onclick = ()=>{
+    const id = parseInt(b.dataset.del,10);
+    confirmModal(`Delete this asset permanently? This cannot be undone.`, async ()=>{
+      await idbDelete(id);
+      toast('Asset deleted');
+      await loadAssets();
+    });
+  });
+}
+['#d-commune','#d-constituency','#d-village','#d-type','#d-date','#d-search'].forEach(sel=>{
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const el = $(sel);
+    if(el) el.addEventListener('input', renderDashboard);
+  });
+});
+$('#d-clear-filters').addEventListener('click', ()=>{
+  ['#d-commune','#d-constituency','#d-village','#d-type'].forEach(s=>$(s).value='');
+  $('#d-date').value=''; $('#d-search').value='';
+  renderDashboard();
+});
+
+$('#d-export-pdf').addEventListener('click', ()=>{
+  const filtered = getFiltered('d');
+  if(!filtered.length){ toast('No records match the current filters', true); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape'});
+
+  doc.setFontSize(15);
+  doc.text('Asset Register — Dashboard Report', 14, 15);
+  doc.setFontSize(9);
+  doc.setTextColor(90,90,90);
+  const filterBits = [];
+  if($('#d-commune').value) filterBits.push('Commune: '+$('#d-commune').value);
+  if($('#d-constituency').value) filterBits.push('Constituency: '+$('#d-constituency').value);
+  if($('#d-village').value) filterBits.push('Village: '+$('#d-village').value);
+  if($('#d-type').value) filterBits.push('Type: '+$('#d-type').value);
+  if($('#d-date').value) filterBits.push('Date: '+$('#d-date').value);
+  if($('#d-search').value.trim()) filterBits.push('Search: "'+$('#d-search').value.trim()+'"');
+  doc.text(`Generated: ${fmtDateTime(new Date().toISOString())}   Filters: ${filterBits.length?filterBits.join(' | '):'None'}`, 14, 21);
+  doc.setTextColor(0,0,0);
+
+  doc.setFontSize(10);
+  const summaryLine = `Total Assets: ${filtered.length}`;
+  doc.text(summaryLine, 14, 28);
+  const tableStartY = 34;
+
+  const rows = filtered.map(a=>[a.id, a.assetName, a.assetType, a.village, a.communePanchayat, a.constituency, a.surveyNumber||'', a.area||0, a.numberOfUnits||0, a.officerName, fmtDate(a.createdAt)]);
+  doc.autoTable({
+    head:[['ID','Asset','Type','Village','Commune','Constituency','Survey No.','Area','Nos.','Officer','Date']],
+    body: rows,
+    startY: tableStartY,
+    styles:{fontSize:8},
+    headStyles:{fillColor:[15,61,61]}
+  });
+  doc.save(`asset-dashboard-${Date.now()}.pdf`);
+  toast('Dashboard PDF downloaded');
+});
+
+function confirmModal(message, onConfirm){
+  const backdrop = $('#modal-backdrop');
+  const content = $('#modal-content');
+  content.innerHTML = `
+    <h3>Confirm</h3>
+    <p style="font-size:13.5px; color:var(--ink-soft);">${escapeHtml(message)}</p>
+    <div class="actions-row">
+      <button class="btn btn-danger" id="cm-yes">Yes, Proceed</button>
+      <button class="btn btn-ghost" id="cm-no">Cancel</button>
+    </div>
+  `;
+  $('#cm-yes').onclick = ()=>{ closeModal(); onConfirm(); };
+  $('#cm-no').onclick = closeModal;
+  backdrop.classList.add('show');
+}
+
+/* ---------------- Map ---------------- */
+let leafletMap = null;
+let markerLayer = null;
+function renderMap(){
+  const geo = getFiltered('m').filter(a=>a.latitude!=null && a.longitude!=null);
+  const totalGeo = ASSETS.filter(a=>a.latitude!=null && a.longitude!=null).length;
+  $('#map-note').textContent = totalGeo
+    ? `${geo.length} of ${totalGeo} geotagged asset(s) shown. Map tiles require an internet connection.`
+    : 'No geotagged assets yet. Use "Capture GPS Location" while registering an asset.';
+
+  if(!leafletMap){
+    leafletMap = L.map('map').setView([11.1271, 78.6569], 7); // default: Tamil Nadu center
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(leafletMap);
+    markerLayer = L.layerGroup().addTo(leafletMap);
+  }
+  markerLayer.clearLayers();
+  const bounds = [];
+  geo.forEach(a=>{
+    const marker = L.marker([a.latitude, a.longitude]).addTo(markerLayer);
+    marker.bindTooltip(a.assetName, {permanent:true, direction:'top', offset:[0,-8], className:'map-label'});
+    const photo = (a.photos && a.photos[0]) ? `<img src="${a.photos[0]}">` : '';
+    marker.bindPopup(`
+      <div class="map-popup">
+        <b>${escapeHtml(a.assetName)}</b><br>
+        <span class="pill type">${escapeHtml(a.assetType)}</span><br>
+        ${a.landmark?`Near: ${escapeHtml(a.landmark)}<br>`:''}
+        ${escapeHtml(a.village)}, ${escapeHtml(a.communePanchayat)}<br>
+        <span class="mono">${a.latitude.toFixed(6)}, ${a.longitude.toFixed(6)}</span>
+        ${photo}
+      </div>
+    `);
+    bounds.push([a.latitude, a.longitude]);
+  });
+  if(bounds.length){
+    leafletMap.fitBounds(bounds, {padding:[30,30], maxZoom:16});
+  }
+  setTimeout(()=>leafletMap.invalidateSize(), 150);
+}
+['#m-type','#m-village','#m-constituency'].forEach(sel=>{
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const el = $(sel);
+    if(el) el.addEventListener('change', renderMap);
+  });
+});
+document.addEventListener('DOMContentLoaded', ()=>{
+  const btn = $('#m-clear-filters');
+  if(btn) btn.addEventListener('click', ()=>{
+    ['#m-type','#m-village','#m-constituency'].forEach(s=>{ if($(s)) $(s).value=''; });
+    renderMap();
+  });
+});
+
+/* ---------------- Reports ---------------- */
+function groupBy(arr, keyFn){
+  const map = {};
+  arr.forEach(a=>{
+    const k = keyFn(a) || '(Unspecified)';
+    if(!map[k]) map[k] = [];
+    map[k].push(a);
+  });
+  return map;
+}
+function reportTable(groups, groupLabel){
+  const keys = Object.keys(groups).sort();
+  let rows = keys.map(k=>{
+    const items = groups[k];
+    const area = items.reduce((s,a)=>s+(a.area||0),0);
+    const nos = items.reduce((s,a)=>s+(a.numberOfUnits||0),0);
+    return `<tr><td>${escapeHtml(k)}</td><td class="mono">${items.length}</td><td class="mono">${area.toFixed(2)}</td><td class="mono">${nos}</td></tr>`;
+  }).join('');
+  const totalCount = keys.reduce((s,k)=>s+groups[k].length,0);
+  return `
+    <table>
+      <thead><tr><th>${groupLabel}</th><th>Assets</th><th>Total Area (Sq.m)</th><th>Total Nos.</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td><strong>Total</strong></td><td class="mono"><strong>${totalCount}</strong></td><td></td><td></td></tr></tfoot>
+    </table>
+  `;
+}
+function detailedRegisterTable(items){
+  const rows = items.map(a=>`
+    <tr>
+      <td class="mono">${a.id}</td>
+      <td>${escapeHtml(a.assetName)}</td>
+      <td>${escapeHtml(a.assetType)}</td>
+      <td>${escapeHtml(a.village)}</td>
+      <td>${escapeHtml(a.communePanchayat)}</td>
+      <td>${escapeHtml(a.constituency)}</td>
+      <td>${escapeHtml(a.surveyNumber||'')}</td>
+      <td class="mono">${a.area||0}</td>
+      <td class="mono">${a.numberOfUnits||0}</td>
+      <td>${escapeHtml(a.officerName)}</td>
+      <td class="mono">${fmtDate(a.createdAt)}</td>
+    </tr>
+  `).join('');
+  return `
+    <div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>Asset</th><th>Type</th><th>Village</th><th>Commune</th><th>Constituency</th><th>Survey No.</th><th>Area</th><th>Nos.</th><th>Officer</th><th>Date</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  `;
+}
+$('#r-generate').addEventListener('click', ()=>{
+  const type = $('#r-type').value;
+  const out = $('#r-output');
+  if(!ASSETS.length){
+    out.innerHTML = '<div class="empty-state"><div class="big">▤</div>No asset records yet.</div>';
+    return;
+  }
+  let title = '', html = '';
+  if(type==='village'){ title='Village-wise Report'; html = reportTable(groupBy(ASSETS,a=>a.village), 'Village'); }
+  else if(type==='commune'){ title='Commune-wise Report'; html = reportTable(groupBy(ASSETS,a=>a.communePanchayat), 'Commune Panchayat'); }
+  else if(type==='constituency'){ title='Constituency-wise Report'; html = reportTable(groupBy(ASSETS,a=>a.constituency), 'Constituency'); }
+  else if(type==='assettype'){ title='Asset Type-wise Report'; html = reportTable(groupBy(ASSETS,a=>a.assetType), 'Asset Type'); }
+  else if(type==='summary'){
+    title = 'Summary Report';
+    const byType = groupBy(ASSETS, a=>a.assetType);
+    html = `<p class="helper">Generated ${fmtDateTime(new Date().toISOString())} · Total records: ${ASSETS.length}</p>` + reportTable(byType, 'Asset Type');
+  }
+  else if(type==='detailed'){ title='Detailed Register'; html = detailedRegisterTable(ASSETS); }
+
+  out.innerHTML = `<h3 class="print-only" style="margin-bottom:14px;">${title}</h3>${html}`;
+});
+$('#r-print').addEventListener('click', ()=>window.print());
+
+/* ---------------- Export ---------------- */
+function renderExportCount(){
+  const filtered = getFiltered('e');
+  $('#e-count').textContent = `${filtered.length} record(s) match current filters.`;
+}
+['#e-commune','#e-constituency','#e-village','#e-type'].forEach(sel=>{
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const el = $(sel);
+    if(el) el.addEventListener('change', renderExportCount);
+  });
+});
+
+function assetsToRows(items){
+  return items.map(a=>({
+    'ID': a.id,
+    'Asset Name': a.assetName,
+    'Asset Type': a.assetType,
+    'Commune Panchayat': a.communePanchayat,
+    'Constituency': a.constituency,
+    'Village': a.village,
+    'Description': a.description||'',
+    'Landmark': a.landmark||'',
+    'Survey Number': a.surveyNumber||'',
+    'Area (Sq.m)': a.area||0,
+    'Number (Nos.)': a.numberOfUnits||0,
+    'Latitude': a.latitude ?? '',
+    'Longitude': a.longitude ?? '',
+    'Officer Name': a.officerName,
+    'Date Recorded': fmtDateTime(a.createdAt)
+  }));
+}
+
+$('#exp-xlsx').addEventListener('click', ()=>{
+  const items = getFiltered('e');
+  if(!items.length){ toast('No records to export', true); return; }
+  const rows = assetsToRows(items);
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Assets');
+  XLSX.writeFile(wb, `asset-register-${Date.now()}.xlsx`);
+  toast('Excel file downloaded');
+});
+
+$('#exp-csv').addEventListener('click', ()=>{
+  const items = getFiltered('e');
+  if(!items.length){ toast('No records to export', true); return; }
+  const rows = assetsToRows(items);
+  const headers = Object.keys(rows[0]);
+  const csvLines = [headers.join(',')];
+  rows.forEach(r=>{
+    csvLines.push(headers.map(h=>{
+      let v = String(r[h] ?? '');
+      if(v.includes(',') || v.includes('"') || v.includes('\n')){
+        v = '"' + v.replace(/"/g,'""') + '"';
+      }
+      return v;
+    }).join(','));
+  });
+  downloadBlob(csvLines.join('\n'), `asset-register-${Date.now()}.csv`, 'text/csv');
+  toast('CSV file downloaded');
+});
+
+$('#exp-pdf').addEventListener('click', ()=>{
+  const items = getFiltered('e');
+  if(!items.length){ toast('No records to export', true); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape'});
+  doc.setFontSize(14);
+  doc.text('Asset Register — Local Administration Department', 14, 14);
+  doc.setFontSize(9);
+  doc.text(`Generated: ${fmtDateTime(new Date().toISOString())}   Records: ${items.length}`, 14, 20);
+  const rows = items.map(a=>[a.id, a.assetName, a.assetType, a.village, a.communePanchayat, a.constituency, a.surveyNumber||'', a.area||0, a.numberOfUnits||0, a.officerName, fmtDate(a.createdAt)]);
+  doc.autoTable({
+    head:[['ID','Asset','Type','Village','Commune','Constituency','Survey No.','Area','Nos.','Officer','Date']],
+    body: rows,
+    startY: 26,
+    styles:{fontSize:8},
+    headStyles:{fillColor:[15,61,61]}
+  });
+  doc.save(`asset-register-${Date.now()}.pdf`);
+  toast('PDF file downloaded');
+});
+
+function buildAndDownloadKml(items, filenameSuffix){
+  const geoItems = items.filter(a=>a.latitude!=null && a.longitude!=null);
+  if(!geoItems.length){ toast('No geotagged records to export', true); return false; }
+  const placemarks = geoItems.map(a=>`
+    <Placemark>
+      <name>${escapeXml(a.assetName)}</name>
+      <description>${escapeXml(`${a.assetType} | ${a.village}, ${a.communePanchayat} | Survey No: ${a.surveyNumber||''} | Officer: ${a.officerName}`)}</description>
+      <Point><coordinates>${a.longitude},${a.latitude},0</coordinates></Point>
+    </Placemark>`).join('');
+  const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+<name>Asset Register Export</name>
+${placemarks}
+</Document>
+</kml>`;
+  downloadBlob(kml, `asset-register-${filenameSuffix}-${Date.now()}.kml`, 'application/vnd.google-earth.kml+xml');
+  toast(`KML file downloaded — ${geoItems.length} location(s)`);
+  return true;
+}
+
+$('#exp-kml').addEventListener('click', ()=>{
+  buildAndDownloadKml(getFiltered('e'), 'export');
+});
+
+$('#m-export-kml').addEventListener('click', ()=>{
+  buildAndDownloadKml(getFiltered('m'), 'map');
+});
+function escapeXml(s){
+  return String(s==null?'':s).replace(/[<>&'"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'}[c]));
+}
+function downloadBlob(content, filename, mime){
+  const blob = new Blob([content], {type:mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---------------- Sync (Excel-based, cross-device) ---------------- */
+const SYNC_CHUNK_SIZE = 28000; // stay safely under Excel's 32,767 char-per-cell limit
+
+$('#sync-export').addEventListener('click', async ()=>{
+  if(!ASSETS.length){ toast('No records to export yet', true); return; }
+  const btn = $('#sync-export');
+  btn.disabled = true; btn.textContent = '⏳ Building sync package...';
+  try{
+    const assetRows = ASSETS.map(a=>({
+      uid: a.uid,
+      assetName: a.assetName,
+      assetType: a.assetType,
+      communePanchayat: a.communePanchayat,
+      constituency: a.constituency,
+      village: a.village,
+      description: a.description||'',
+      landmark: a.landmark||'',
+      surveyNumber: a.surveyNumber||'',
+      area: a.area||0,
+      numberOfUnits: a.numberOfUnits||0,
+      latitude: a.latitude ?? '',
+      longitude: a.longitude ?? '',
+      geotagTime: a.geotagTime || '',
+      officerName: a.officerName,
+      createdAt: a.createdAt || '',
+      updatedAt: a.updatedAt || a.createdAt || '',
+      photoCount: (a.photos||[]).length
+    }));
+
+    const photoRows = [];
+    ASSETS.forEach(a=>{
+      (a.photos||[]).forEach((photoData, pIdx)=>{
+        let offset = 0, chunkIdx = 0;
+        while(offset < photoData.length){
+          photoRows.push({
+            uid: a.uid,
+            photoIndex: pIdx,
+            chunkIndex: chunkIdx,
+            chunkData: photoData.slice(offset, offset + SYNC_CHUNK_SIZE)
+          });
+          offset += SYNC_CHUNK_SIZE;
+          chunkIdx++;
+        }
+      });
+    });
+
+    const listRows = [];
+    Object.keys(LISTS).forEach(listType=>{
+      LISTS[listType].forEach(value=>listRows.push({listType, value}));
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(assetRows), 'Assets');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(photoRows.length?photoRows:[{uid:'',photoIndex:'',chunkIndex:'',chunkData:''}]), 'Photos');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(listRows), 'Lists');
+    XLSX.writeFile(wb, `asset-registry-SYNC-${Date.now()}.xlsx`);
+    $('#sync-export-info').textContent = `Exported ${assetRows.length} asset(s) with ${photoRows.length} photo chunk(s). Transfer this file to the other device.`;
+    toast('Sync package downloaded');
+  }catch(err){
+    console.error(err);
+    toast('Could not build sync package — try exporting with fewer photos', true);
+  }
+  btn.disabled = false; btn.textContent = '⬇ Export Sync Package (.xlsx)';
+});
+
+$('#sync-choose-file').addEventListener('click', ()=>$('#sync-file').click());
+$('#sync-file').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  $('#sync-file-name').textContent = 'Reading ' + file.name + '...';
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array'});
+    if(!wb.SheetNames.includes('Assets')){
+      toast('This does not look like a valid sync file (missing "Assets" sheet)', true);
+      $('#sync-file-name').textContent = '';
+      e.target.value = '';
+      return;
+    }
+    const assetRows = XLSX.utils.sheet_to_json(wb.Sheets['Assets']);
+    const photoRows = wb.SheetNames.includes('Photos') ? XLSX.utils.sheet_to_json(wb.Sheets['Photos']) : [];
+    const listRows = wb.SheetNames.includes('Lists') ? XLSX.utils.sheet_to_json(wb.Sheets['Lists']) : [];
+
+    // reassemble photos: group by uid+photoIndex, sort by chunkIndex, concatenate
+    const photoMap = {}; // "uid::photoIndex" -> {uid, photoIndex, chunks:[]}
+    photoRows.forEach(r=>{
+      if(!r.uid || r.chunkData === undefined) return;
+      const key = r.uid + '::' + r.photoIndex;
+      if(!photoMap[key]) photoMap[key] = {uid: String(r.uid), photoIndex: r.photoIndex, chunks: []};
+      photoMap[key].chunks.push({idx: r.chunkIndex, data: String(r.chunkData)});
+    });
+    const photosByUid = {};
+    Object.values(photoMap).forEach(entry=>{
+      entry.chunks.sort((a,b)=>a.idx-b.idx);
+      const full = entry.chunks.map(c=>c.data).join('');
+      if(!photosByUid[entry.uid]) photosByUid[entry.uid] = [];
+      photosByUid[entry.uid][entry.photoIndex] = full;
+    });
+
+    const importedAssets = assetRows.filter(r=>r.uid && r.assetName).map(r=>({
+      uid: String(r.uid),
+      assetName: r.assetName || '',
+      assetType: r.assetType || '',
+      communePanchayat: r.communePanchayat || '',
+      constituency: r.constituency || '',
+      village: r.village || '',
+      description: r.description || '',
+      landmark: r.landmark || '',
+      surveyNumber: r.surveyNumber || '',
+      area: parseFloat(r.area) || 0,
+      numberOfUnits: parseInt(r.numberOfUnits) || 0,
+      latitude: r.latitude === '' || r.latitude === undefined ? null : parseFloat(r.latitude),
+      longitude: r.longitude === '' || r.longitude === undefined ? null : parseFloat(r.longitude),
+      geotagTime: r.geotagTime || null,
+      officerName: r.officerName || '',
+      createdAt: r.createdAt || new Date().toISOString(),
+      updatedAt: r.updatedAt || r.createdAt || new Date().toISOString(),
+      photos: (photosByUid[String(r.uid)] || []).filter(Boolean)
+    }));
+
+    const importedLists = {communes:[],constituencies:[],villages:[],assetTypes:[]};
+    listRows.forEach(r=>{
+      if(importedLists[r.listType] && r.value && !importedLists[r.listType].includes(r.value)){
+        importedLists[r.listType].push(r.value);
+      }
+    });
+
+    if(!importedAssets.length){
+      toast('No valid asset records found in this file', true);
+      $('#sync-file-name').textContent = '';
+      e.target.value = '';
+      return;
+    }
+
+    const localUids = new Set(ASSETS.map(a=>a.uid));
+    const newCount = importedAssets.filter(a=>!localUids.has(a.uid)).length;
+    const updateCount = importedAssets.length - newCount;
+
+    $('#sync-file-name').textContent = `${file.name} — ${importedAssets.length} record(s) found.`;
+    showImportPreview(file.name, importedAssets, importedLists, newCount, updateCount);
+  }catch(err){
+    console.error(err);
+    toast('Could not read this file — is it a sync .xlsx export?', true);
+    $('#sync-file-name').textContent = '';
+  }
+  e.target.value = '';
+});
+
+function showImportPreview(fileName, importedAssets, importedLists, newCount, updateCount){
+  const backdrop = $('#modal-backdrop');
+  const content = $('#modal-content');
+  content.innerHTML = `
+    <h3>Import Preview</h3>
+    <p style="font-size:13.5px; color:var(--ink-soft);">
+      <strong>${escapeHtml(fileName)}</strong><br>
+      ${importedAssets.length} record(s) in file<br>
+      <span class="pill" style="background:var(--success-bg); color:var(--success); border-color:#c6ddcc;">+${newCount} new</span>
+      &nbsp;<span class="pill" style="background:#fdf1e0; color:var(--amber); border-color:#eccf9b;">${updateCount} to update</span>
+    </p>
+    <div class="field">
+      <label>Import Mode</label>
+      <select id="im-mode">
+        <option value="merge">Merge — add new, update matching records only (recommended)</option>
+        <option value="replace">Replace All — wipe this device's data first</option>
+      </select>
+    </div>
+    <p class="helper" id="im-warn" style="display:none; color:var(--danger);">This will permanently delete all ${ASSETS.length} existing record(s) on this device before importing.</p>
+    <div class="actions-row">
+      <button class="btn btn-primary" id="im-go">Import Now</button>
+      <button class="btn btn-ghost" id="im-cancel">Cancel</button>
+    </div>
+  `;
+  $('#im-mode').addEventListener('change', (e)=>{
+    $('#im-warn').style.display = e.target.value==='replace' ? 'block' : 'none';
+  });
+  $('#im-cancel').onclick = closeModal;
+  $('#im-go').onclick = async ()=>{
+    const mode = $('#im-mode').value;
+    $('#im-go').disabled = true; $('#im-go').textContent = 'Importing...';
+    await applyImport(mode, importedAssets, importedLists);
+    closeModal();
+  };
+  backdrop.classList.add('show');
+}
+
+async function applyImport(mode, importedAssets, importedLists){
+  try{
+    if(mode==='replace'){
+      const all = await idbAll();
+      for(const a of all){ await idbDelete(a.id); }
+    }
+    const localByUid = {};
+    (await idbAll()).forEach(a=>{ localByUid[a.uid] = a; });
+
+    let added=0, updated=0;
+    for(const imp of importedAssets){
+      const existing = localByUid[imp.uid];
+      if(existing){
+        await idbPut({...imp, id: existing.id});
+        updated++;
+      } else {
+        const clone = {...imp};
+        delete clone.id;
+        await idbPut(clone);
+        added++;
+      }
+    }
+    // merge dropdown lists
+    Object.keys(importedLists).forEach(k=>{
+      importedLists[k].forEach(v=>{
+        if(!LISTS[k].includes(v)) LISTS[k].push(v);
+      });
+    });
+    saveLists(LISTS);
+    refreshAllDropdowns();
+    await loadAssets();
+    toast(`Import complete — ${added} added, ${updated} updated`);
+  }catch(err){
+    console.error(err);
+    toast('Import failed partway through — please check your data', true);
+  }
+}
+
+/* ---------------- Init ---------------- */
+async function init(){
+  refreshAllDropdowns();
+  await loadAssets();
+  switchTab('register');
+}
+init();
+</script>
+</body>
+</html>
